@@ -9,27 +9,23 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestTemplate;
 
 import com.example.springserver.model.Device;
-//import com.example.springserver.DeviceService;
 
-
+import java.util.Map;
 
 @RestController 
-//@RequestMapping(path="/demo") // This means URL's start with /demo (after Application path)
 public class MainController {
-  
-  
-  @GetMapping("/")
-  public String hello() {
-      return "NEW hello world";
-  }
 
   @Autowired 
   private DeviceRepository deviceRepository;
- 
-  @Autowired 
-  private DeviceService deviceService;
+  private final RestTemplate restTemplate = new RestTemplate();
+  
+  @GetMapping("/")
+  public String hello() {
+      return "Welcome to Device Classification Project";
+  }
 
   @GetMapping(path="/api/devices/{id}")
   public @ResponseBody Device getDeviceById(@PathVariable Long id) {
@@ -38,35 +34,51 @@ public class MainController {
 
   @PostMapping(path="/api/devices/")
   public @ResponseBody Iterable<Device> getAllDevices() {
-    // This returns a JSON or XML with the devices
     return deviceRepository.findAll();
   }
 
   @PostMapping(path="/api/devices") 
-  public  ResponseEntity<Device> create_Device(@RequestBody Device device) { //@ResponseBody
-     System.out.println(device);
-     Device n = device;
-     System.out.println(n.getBattery_power());
-     deviceRepository.save(n);
-     System.out.println(n.getId());
-     return ResponseEntity.status(HttpStatus.CREATED).body(n); //ResponseEntity.status(HttpStatus.CREATED).contentType(MediaType.APPLICATION_JSON).body(result);
+  public  ResponseEntity<Device> create_Device(@RequestBody Device device) { 
+     Device new_device = device;
+     deviceRepository.save(new_device);
+     return ResponseEntity.status(HttpStatus.CREATED).body(new_device);
  }
 
  @PostMapping(path="/api/predict/{deviceId}") 
- public  String predict(@PathVariable Long deviceId) { //@ResponseBody
+ public String predict(@PathVariable Long deviceId) { //@ResponseBody
   Device device = deviceRepository.findById(deviceId).orElse(null);//getDeviceById(deviceId); 
+
   try {
     // Call the service to predict the price and update the device
-    Device pred_device = deviceService.predictPrice(device);
-    System.out.println(pred_device);
-    return "pred_device"; //ResponseEntity.ok(pred_device);  // Return the updated device with predicted price
-  } 
+    if (device != null) {
+
+      // Send specifications to the Flask microservice for prediction
+      ResponseEntity<Map> response = restTemplate.postForEntity(
+          "http://localhost:5000/predict",  // Base URL of the Flask microservice
+          device,
+          Map.class
+          //Map.of("features", device),  // Request data
+          //Map.class
+      );
+
+      if (response.getStatusCode().is2xxSuccessful()) {
+          int predictedPrice = (int) response.getBody().get("price_range");
+          device.setprice_range(predictedPrice);
+
+          deviceRepository.save(device);
+          return String.format("The pred price for %s ID device is %s", deviceId, predictedPrice ); //ResponseEntity.ok(pred_device); 
+    }  
+    else {
+      return "prediction_failed";}
+}
+else {
+  return String.format("This DeviceID %s May not in your database" , deviceId);}
+
+}
+
   catch (Exception e) {
-  System.err.println(device);
-  return "device"; //ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());  // Better error response
-
-  }
-
+  return "INTERNAL_SERVER_ERROR"; 
+  } 
   
 }
 
