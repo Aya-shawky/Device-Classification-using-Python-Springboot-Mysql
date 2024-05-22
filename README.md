@@ -1,4 +1,4 @@
-System Main Component
+# System Main Component
 
 1) Train Model with python
 2) Deploy Model With Flask API :
@@ -14,13 +14,13 @@ System Main Component
   - create Device
   - Return all devices
   - Retern Device classification given an id
-  - Communicate with flask API to predict a device (still n progress)
+  - Communicate with flask API to predict a device (still in progress)
 
-Updates
+# Updates
 
 22/5/2022 --> Communicate with flask API to predict a device (DONE)
 
-HOW TO RUN =)
+# HOW TO RUN =)
 
 1) open vs-code
 2) Run flask app using trminal
